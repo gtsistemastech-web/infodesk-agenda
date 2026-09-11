@@ -17,9 +17,9 @@ const state = {
     pin: '1234',
     proadView: 'kanban',
     firebase: {
-      apiKey: '',
-      projectId: '',
-      authDomain: ''
+      apiKey: 'AIzaSyCaVDq09DYfjlspAC1vvdw2KO42nnSXgwY',
+      projectId: 'infodesk-agenda',
+      authDomain: 'infodesk-agenda.firebaseapp.com'
     }
   },
   currentDate: new Date(),
@@ -1773,13 +1773,13 @@ function importDataJson(event) {
 }
 
 function resetAllDataPrompt() {
-  if (confirm('ATENÇÃO: Deseja apagar TODOS os seus dados do sistema? Esta ação não pode ser desfeita.')) {
-    localStorage.removeItem(STORAGE_KEY);
+  if (confirm('ATENÇÃO: Deseja apagar os dados e deixar o sistema 100% limpo?')) {
     state.proads = [];
     state.agenda = [];
     state.infos = [];
+    saveLocalData();
     renderAll();
-    showToast('Todos os dados foram resetados.');
+    showToast('Sistema limpo com sucesso.');
   }
 }
 
@@ -1861,11 +1861,7 @@ function escapeJs(str) {
 window.addEventListener('DOMContentLoaded', () => {
   loadLocalData();
 
-  // Se for a primeira vez que o usuário abre e não tiver dados, inicializa com exemplos úteis
-  if (state.proads.length === 0 && state.infos.length === 0 && state.agenda.length === 0) {
-    populateSampleData();
-    saveLocalData();
-  }
+  // Sistema inicia 100% limpo com os dados reais do usuario (sem dados ficticios)
 
   // Aplica tema salvo
   if (state.settings.theme === 'dark') {
