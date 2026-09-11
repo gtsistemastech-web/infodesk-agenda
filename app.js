@@ -7,6 +7,12 @@
 // ==========================================================================
 // 1. ESTADO GLOBAL DA APLICAÇÃO (STATE STORE)
 // ==========================================================================
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyCaVDq09DYfjlspAC1vvdw2KO42nnSXgwY',
+  projectId: 'infodesk-agenda',
+  authDomain: 'infodesk-agenda.firebaseapp.com'
+};
+
 const state = {
   proads: [],
   agenda: [],
@@ -16,11 +22,7 @@ const state = {
     pinEnabled: false,
     pin: '1234',
     proadView: 'kanban',
-    firebase: {
-      apiKey: 'AIzaSyCaVDq09DYfjlspAC1vvdw2KO42nnSXgwY',
-      projectId: 'infodesk-agenda',
-      authDomain: 'infodesk-agenda.firebaseapp.com'
-    }
+    firebase: { ...DEFAULT_FIREBASE_CONFIG }
   },
   currentDate: new Date(),
   selectedDate: getTodayString(),
@@ -133,6 +135,10 @@ function loadLocalData() {
       if (parsed.settings) {
         state.settings = { ...state.settings, ...parsed.settings };
       }
+      // Garante que o Firebase sempre use DEFAULT_FIREBASE_CONFIG caso nao haja chave configurada
+      if (!state.settings.firebase || !state.settings.firebase.apiKey) {
+        state.settings.firebase = { ...DEFAULT_FIREBASE_CONFIG };
+      }
     }
   } catch (e) {
     console.error('Erro ao ler dados locais:', e);
@@ -167,10 +173,10 @@ function triggerSyncIndicator() {
 
 // Inicialização da Nuvem (Firebase)
 function initFirebase() {
-  const fbCfg = state.settings.firebase;
-  if (!fbCfg || !fbCfg.apiKey || !fbCfg.projectId) {
-    updateCloudStatusUI(false, 'Local', 'Dados salvos neste computador');
-    return;
+  let fbCfg = state.settings.firebase;
+  if (!fbCfg || !fbCfg.apiKey) {
+    fbCfg = { ...DEFAULT_FIREBASE_CONFIG };
+    state.settings.firebase = fbCfg;
   }
 
   if (typeof firebase === 'undefined') {
