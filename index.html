@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfoDesk & Agenda — Central Diária e Gestão de PROADs</title>
+  
+  <!-- Ícones Tabler via CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  
+  <!-- Firebase SDKs compat via CDN para sincronização em nuvem multi-dispositivo -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+  <!-- Folha de Estilos Customizada -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-light">
+
+  <!-- BARRA DE CARREGAMENTO / SINCRONIZAÇÃO -->
+  <div class="sync-progress" id="sync-progress"></div>
+
+  <!-- TOAST DE NOTIFICAÇÃO (COPIADO, SALVO, ETC) -->
+  <div class="toast" id="toast">
+    <i class="ti ti-check" id="toast-icon"></i>
+    <span id="toast-message">Notificação</span>
+  </div>
+
+  <!-- TELA DE BLOQUEIO POR PIN (SEGURANÇA EM COMPUTADORES COMPARTILHADOS) -->
+  <div class="lock-screen" id="lock-screen">
+    <div class="lock-box">
+      <div class="lock-icon-wrap">
+        <i class="ti ti-shield-lock"></i>
+      </div>
+      <h2>InfoDesk & Agenda</h2>
+      <p class="lock-subtitle">Sessão protegida. Digite seu PIN de acesso para continuar:</p>
+      
+      <div class="pin-display" id="pin-display">
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+      </div>
+
+      <input type="password" id="pin-input" maxlength="4" autofocus placeholder="••••" autocomplete="off">
+      <div class="pin-error" id="pin-error">PIN incorreto. Tente novamente.</div>
+
+      <div class="lock-actions">
+        <button class="btn btn-primary btn-full" onclick="checkPin()">
+          <i class="ti ti-lock-open"></i> Desbloquear
+        </button>
+        <button class="btn btn-subtle btn-sm" onclick="skipPinDev()">
+          Entrar sem PIN (Modo Padrão)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTRUTURA PRINCIPAL DO APLICATIVO -->
+  <div class="app-container" id="app-container">
+
+    <!-- BARRA LATERAL (SIDEBAR) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-icon">
+            <i class="ti ti-folders"></i>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">InfoDesk</span>
+            <span class="brand-subtitle">Central Diária</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Principal</div>
+        
+        <button class="nav-btn active" data-page="hoje" onclick="navigateTo('hoje', this)">
+          <i class="ti ti-calendar-event"></i>
+          <span>Hoje em Foco</span>
+          <span class="badge badge-pulse" id="badge-hoje-count">0</span>
+        </button>
+
+        <button class="nav-btn" data-page="proads" onclick="navigateTo('proads', this)">
+          <i class="ti ti-git-pull-request"></i>
+          <span>Processos (PROADs)</span>
+          <span class="badge" id="badge-proad-count">0</span>
+        </button>
+
+        <button class="nav-btn" data-page="agenda" onclick="navigateTo('agenda', this)">
+          <i class="ti ti-calendar-month"></i>
+          <span>Agenda & Calendário</span>
+        </button>
+
+        <button class="nav-btn" data-page="info" onclick="navigateTo('info', this)">
+          <i class="ti ti-bulb"></i>
+          <span>Base de Informações</span>
+          <span class="badge" id="badge-info-count">0</span>
+        </button>
+
+        <div class="nav-section-title">Sistema</div>
+
+        <button class="nav-btn" data-page="config" onclick="navigateTo('config', this)">
+          <i class="ti ti-cloud-cog"></i>
+          <span>Nuvem & Backup</span>
+        </button>
+      </nav>
+
+      <!-- RODAPÉ DA SIDEBAR -->
+      <div class="sidebar-footer">
+        <div class="cloud-status-widget" onclick="navigateTo('config')">
+          <div class="cloud-indicator" id="cloud-indicator"></div>
+          <div class="cloud-text">
+            <span class="cloud-title" id="cloud-status-title">Nuvem Local</span>
+            <span class="cloud-desc" id="cloud-status-desc">Dados seguros</span>
+          </div>
+        </div>
+
+        <div class="sidebar-user">
+          <button class="btn-icon" title="Bloquear tela com PIN" onclick="lockSystem()">
+            <i class="ti ti-lock"></i>
+          </button>
+          <button class="btn-icon" id="theme-toggle-btn" title="Alternar tema Claro/Escuro" onclick="toggleTheme()">
+            <i class="ti ti-moon" id="theme-icon"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL (MAIN VIEW) -->
+    <main class="main-content">
+      
+      <!-- TOPO / HEADER GLOBAL -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn-icon mobile-menu-btn" onclick="toggleSidebar()">
+            <i class="ti ti-menu-2"></i>
+          </button>
+          <div class="clock-widget">
+            <span class="clock-time" id="clock-time">--:--:--</span>
+            <span class="clock-date" id="clock-date">Carregando data...</span>
+          </div>
+        </div>
+
+        <!-- BARRA DE BUSCA GLOBAL (SPOTLIGHT CTRL + K) -->
+        <div class="search-box-trigger" onclick="openGlobalSearch()" title="Pressione Ctrl + K para buscar em tudo">
+          <i class="ti ti-search"></i>
+          <span>Buscar PROAD, ramal, modelo, compromisso...</span>
+          <kbd>Ctrl + K</kbd>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="dropdown">
+            <button class="btn btn-primary" onclick="toggleQuickCreateDropdown()">
+              <i class="ti ti-plus"></i>
+              <span>Novo Registro</span>
+              <i class="ti ti-chevron-down"></i>
+            </button>
+            <div class="dropdown-menu" id="quick-create-menu">
+              <a href="javascript:void(0)" onclick="openNewProadModal()"><i class="ti ti-git-pull-request"></i> Novo PROAD</a>
+              <a href="javascript:void(0)" onclick="openNewEventModal()"><i class="ti ti-calendar-plus"></i> Novo Evento / Prazo</a>
+              <a href="javascript:void(0)" onclick="openNewInfoModal()"><i class="ti ti-bulb"></i> Nova Informação / Nota</a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============================================== -->
+      <!-- PÁGINA 1: HOJE EM FOCO (DASHBOARD DIÁRIO) -->
+      <!-- ============================================== -->
+      <section class="page-view active" id="view-hoje">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Hoje em Foco</h1>
+            <p class="page-subtitle">Sua visão executiva do expediente: prazos, compromissos e informações mais consultadas.</p>
+          </div>
+          <div class="page-header-actions">
+            <button class="btn btn-outline" onclick="loadSampleDataPrompt()">
+              <i class="ti ti-database-import"></i> Dados de Exemplo
+            </button>
+          </div>
+        </div>
+
+        <!-- CARDS DE RESUMO DO EXPEDIENTE -->
+        <div class="stats-grid">
+          <div class="stat-card" onclick="navigateTo('proads')">
+            <div class="stat-icon stat-blue"><i class="ti ti-git-pull-request"></i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-proads-active">0</span>
+              <span class="stat-label">PROADs em Andamento</span>
+            </div>
+          </div>
+
+          <div class="stat-card" onclick="navigateTo('proads')">
+            <div class="stat-icon stat-red"><i class="ti ti-alert-triangle"></i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-proads-urgent">0</span>
+              <span class="stat-label">Urgentes / Prazo Próximo</span>
+            </div>
+          </div>
+
+          <div class="stat-card" onclick="navigateTo('agenda')">
+            <div class="stat-icon stat-emerald"><i class="ti ti-calendar-check"></i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-events-today">0</span>
+              <span class="stat-label">Compromissos Hoje</span>
+            </div>
+          </div>
+
+          <div class="stat-card" onclick="navigateTo('info')">
+            <div class="stat-icon stat-amber"><i class="ti ti-pin"></i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-pinned-info">0</span>
+              <span class="stat-label">Informações Fixadas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GRID PRINCIPAL DO DASHBOARD -->
+        <div class="dashboard-grid">
+          
+          <!-- COLUNA ESQUERDA: AGENDA DE HOJE -->
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <div class="dash-card-title">
+                <i class="ti ti-clock-play text-primary"></i>
+                <span>Agenda & Prazos de Hoje</span>
+              </div>
+              <button class="btn btn-subtle btn-xs" onclick="openNewEventModal(getTodayString())">
+                <i class="ti ti-plus"></i> Agendar
+              </button>
+            </div>
+            <div class="dash-card-body">
+              <div class="today-timeline" id="today-timeline-list">
+                <!-- Preenchido via JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- COLUNA DIREITA: PROADS PRIORITÁRIOS -->
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <div class="dash-card-title">
+                <i class="ti ti-git-branch text-primary"></i>
+                <span>PROADs em Foco no Expediente</span>
+              </div>
+              <button class="btn btn-subtle btn-xs" onclick="navigateTo('proads')">
+                Ver todos <i class="ti ti-arrow-right"></i>
+              </button>
+            </div>
+            <div class="dash-card-body">
+              <div class="proad-priority-list" id="today-proads-list">
+                <!-- Preenchido via JavaScript -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO INFERIOR: CARTÕES DE CONSULTA RÁPIDA FIXADOS -->
+        <div class="pinned-section">
+          <div class="section-title-row">
+            <div class="section-title">
+              <i class="ti ti-pin text-amber"></i>
+              <span>Informações Fixadas para Consulta Rápida</span>
+            </div>
+            <button class="btn btn-subtle btn-xs" onclick="navigateTo('info')">
+              Gerenciar Informações <i class="ti ti-arrow-right"></i>
+            </button>
+          </div>
+          <div class="pinned-grid" id="pinned-info-grid">
+            <!-- Cards fixados renderizados aqui -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PÁGINA 2: PROCESSOS (PROADS) COM FASES -->
+      <!-- ============================================== -->
+      <section class="page-view" id="view-proads">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Processos Administrativos (PROADs)</h1>
+            <p class="page-subtitle">Acompanhamento e fluxo de trabalho por fases: Recebimento, Elaboração, Revisão e Finalização.</p>
+          </div>
+          <div class="page-header-actions">
+            <div class="view-switch">
+              <button class="btn-switch active" id="proad-btn-kanban" onclick="setProadView('kanban')" title="Visão de Fases / Kanban">
+                <i class="ti ti-layout-kanban"></i> Fases
+              </button>
+              <button class="btn-switch" id="proad-btn-table" onclick="setProadView('table')" title="Visão em Tabela">
+                <i class="ti ti-list"></i> Lista
+              </button>
+            </div>
+            <button class="btn btn-primary" onclick="openNewProadModal()">
+              <i class="ti ti-plus"></i> Novo PROAD
+            </button>
+          </div>
+        </div>
+
+        <!-- BARRA DE FILTROS DE PROAD -->
+        <div class="filter-bar">
+          <div class="search-input-wrap">
+            <i class="ti ti-search"></i>
+            <input type="text" id="proad-search-input" placeholder="Buscar por número, interessado ou assunto..." oninput="filterProads()">
+          </div>
+
+          <div class="filter-controls">
+            <div class="filter-select-group">
+              <label>Prioridade:</label>
+              <select id="proad-filter-prio" onchange="filterProads()">
+                <option value="all">Todas</option>
+                <option value="urgente">Urgente</option>
+                <option value="alta">Alta</option>
+                <option value="normal">Normal</option>
+              </select>
+            </div>
+
+            <div class="filter-select-group">
+              <label>Fase:</label>
+              <select id="proad-filter-phase" onchange="filterProads()">
+                <option value="all">Todas as Fases</option>
+                <option value="recebimento">1. Recebimento</option>
+                <option value="elaboracao">2. Elaboração</option>
+                <option value="revisao">3. Revisão</option>
+                <option value="finalizacao">4. Finalização</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISÃO 1: QUADRO KANBAN DE FASES -->
+        <div class="kanban-board" id="proad-kanban-board">
+          <!-- Coluna 1: Recebimento -->
+          <div class="kanban-column" id="col-recebimento">
+            <div class="col-header col-header-recebimento">
+              <div class="col-title-group">
+                <span class="col-badge">1</span>
+                <h3>Recebimento</h3>
+              </div>
+              <span class="col-counter" id="count-recebimento">0</span>
+            </div>
+            <div class="kanban-cards-container" id="cards-recebimento"></div>
+          </div>
+
+          <!-- Coluna 2: Elaboração -->
+          <div class="kanban-column" id="col-elaboracao">
+            <div class="col-header col-header-elaboracao">
+              <div class="col-title-group">
+                <span class="col-badge">2</span>
+                <h3>Elaboração</h3>
+              </div>
+              <span class="col-counter" id="count-elaboracao">0</span>
+            </div>
+            <div class="kanban-cards-container" id="cards-elaboracao"></div>
+          </div>
+
+          <!-- Coluna 3: Revisão -->
+          <div class="kanban-column" id="col-revisao">
+            <div class="col-header col-header-revisao">
+              <div class="col-title-group">
+                <span class="col-badge">3</span>
+                <h3>Revisão</h3>
+              </div>
+              <span class="col-counter" id="count-revisao">0</span>
+            </div>
+            <div class="kanban-cards-container" id="cards-revisao"></div>
+          </div>
+
+          <!-- Coluna 4: Finalização -->
+          <div class="kanban-column" id="col-finalizacao">
+            <div class="col-header col-header-finalizacao">
+              <div class="col-title-group">
+                <span class="col-badge">4</span>
+                <h3>Finalizado</h3>
+              </div>
+              <span class="col-counter" id="count-finalizacao">0</span>
+            </div>
+            <div class="kanban-cards-container" id="cards-finalizacao"></div>
+          </div>
+        </div>
+
+        <!-- VISÃO 2: TABELA DE PROADS -->
+        <div class="table-container" id="proad-table-view" style="display:none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Número PROAD</th>
+                <th>Interessado</th>
+                <th>Assunto</th>
+                <th>Fase Atual</th>
+                <th>Prioridade</th>
+                <th>Prazo</th>
+                <th>Último Andamento</th>
+                <th class="th-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="proad-table-body">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PÁGINA 3: AGENDA & CALENDÁRIO -->
+      <!-- ============================================== -->
+      <section class="page-view" id="view-agenda">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Agenda & Calendário</h1>
+            <p class="page-subtitle">Organize compromissos, reuniões, audiências e prazos processuais com visão do mês e do dia.</p>
+          </div>
+          <div class="page-header-actions">
+            <button class="btn btn-primary" onclick="openNewEventModal()">
+              <i class="ti ti-plus"></i> Novo Evento
+            </button>
+          </div>
+        </div>
+
+        <div class="agenda-layout">
+          <!-- CALENDÁRIO PRINCIPAL (MÊS) -->
+          <div class="cal-main-card">
+            <div class="cal-header">
+              <div class="cal-navigation">
+                <button class="btn-icon" onclick="changeMonth(-1)" title="Mês anterior">
+                  <i class="ti ti-chevron-left"></i>
+                </button>
+                <h2 class="cal-month-title" id="cal-month-title">Mês Ano</h2>
+                <button class="btn-icon" onclick="changeMonth(1)" title="Próximo mês">
+                  <i class="ti ti-chevron-right"></i>
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="goToTodayMonth()">Hoje</button>
+              </div>
+
+              <!-- LEGENDA DE CATEGORIAS -->
+              <div class="cal-legend">
+                <span class="legend-chip chip-prazo"><span class="chip-dot"></span>Prazo PROAD</span>
+                <span class="legend-chip chip-reuniao"><span class="chip-dot"></span>Reunião</span>
+                <span class="legend-chip chip-despacho"><span class="chip-dot"></span>Despacho</span>
+                <span class="legend-chip chip-tarefa"><span class="chip-dot"></span>Tarefa</span>
+                <span class="legend-chip chip-lembrete"><span class="chip-dot"></span>Lembrete</span>
+              </div>
+            </div>
+
+            <!-- GRADE DE DIAS DO CALENDÁRIO -->
+            <div class="cal-grid">
+              <div class="cal-weekdays">
+                <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+              </div>
+              <div class="cal-days-grid" id="cal-days-grid">
+                <!-- Renderizado via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL LATERAL: EVENTOS DO DIA SELECIONADO -->
+          <div class="cal-sidebar-card">
+            <div class="cal-sidebar-header">
+              <div>
+                <span class="text-muted text-xs">Eventos para</span>
+                <h3 id="selected-day-title">Data Selecionada</h3>
+              </div>
+              <button class="btn btn-subtle btn-xs" onclick="openNewEventModal(state.selectedDate)">
+                <i class="ti ti-plus"></i> Adicionar
+              </button>
+            </div>
+
+            <div class="selected-day-events" id="selected-day-events">
+              <!-- Eventos da data renderizados aqui -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PÁGINA 4: BASE DE INFORMAÇÕES & SNIPPETS -->
+      <!-- ============================================== -->
+      <section class="page-view" id="view-info">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Base de Informações & Snippets</h1>
+            <p class="page-subtitle">Seu repositório ágil de ramais, modelos de texto, despachos padronizados, links e rotinas com cópia em 1 clique.</p>
+          </div>
+          <div class="page-header-actions">
+            <button class="btn btn-primary" onclick="openNewInfoModal()">
+              <i class="ti ti-plus"></i> Nova Informação
+            </button>
+          </div>
+        </div>
+
+        <!-- FILTROS E CATEGORIAS -->
+        <div class="info-categories-bar" id="info-categories-bar">
+          <button class="cat-pill active" data-cat="all" onclick="filterInfoByCategory('all', this)">
+            <i class="ti ti-apps"></i> Todas (<span id="count-cat-all">0</span>)
+          </button>
+          <button class="cat-pill" data-cat="ramais" onclick="filterInfoByCategory('ramais', this)">
+            <i class="ti ti-phone"></i> Telefones & Ramais (<span id="count-cat-ramais">0</span>)
+          </button>
+          <button class="cat-pill" data-cat="modelos" onclick="filterInfoByCategory('modelos', this)">
+            <i class="ti ti-file-text"></i> Modelos & Minutas (<span id="count-cat-modelos">0</span>)
+          </button>
+          <button class="cat-pill" data-cat="procedimentos" onclick="filterInfoByCategory('procedimentos', this)">
+            <i class="ti ti-list-check"></i> Procedimentos & Rotinas (<span id="count-cat-procedimentos">0</span>)
+          </button>
+          <button class="cat-pill" data-cat="links" onclick="filterInfoByCategory('links', this)">
+            <i class="ti ti-link"></i> Links & Sistemas (<span id="count-cat-links">0</span>)
+          </button>
+          <button class="cat-pill" data-cat="acessos" onclick="filterInfoByCategory('acessos', this)">
+            <i class="ti ti-key"></i> Acessos & Senhas (<span id="count-cat-acessos">0</span>)
+          </button>
+          <button class="cat-pill" data-cat="geral" onclick="filterInfoByCategory('geral', this)">
+            <i class="ti ti-note"></i> Anotações Gerais (<span id="count-cat-geral">0</span>)
+          </button>
+        </div>
+
+        <div class="filter-bar" style="margin-top:12px">
+          <div class="search-input-wrap">
+            <i class="ti ti-search"></i>
+            <input type="text" id="info-search-input" placeholder="Buscar nas informações por título, texto ou tags..." oninput="filterInfo()">
+          </div>
+          <div class="filter-controls">
+            <button class="btn btn-outline btn-sm" id="btn-toggle-pinned-only" onclick="toggleOnlyPinnedFilter(this)">
+              <i class="ti ti-pin"></i> Somente Fixadas
+            </button>
+          </div>
+        </div>
+
+        <!-- GRID DE CARDS DE INFORMAÇÕES -->
+        <div class="info-cards-grid" id="info-cards-grid">
+          <!-- Renderizado via JS -->
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PÁGINA 5: NUVEM, SINCRONIZAÇÃO E BACKUP -->
+      <!-- ============================================== -->
+      <section class="page-view" id="view-config">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Configurações, Nuvem & Segurança</h1>
+            <p class="page-subtitle">Configure o acesso em qualquer computador via Firebase Cloud Sync, gerencie o PIN e faça backups.</p>
+          </div>
+        </div>
+
+        <div class="config-grid">
+          
+          <!-- CARD 1: FIREBASE CLOUD SYNC -->
+          <div class="config-card">
+            <div class="config-card-header">
+              <div class="config-card-title">
+                <i class="ti ti-cloud-upload text-primary"></i>
+                <span>Sincronização em Nuvem (Firebase Firestore)</span>
+              </div>
+              <span class="badge" id="firebase-status-badge">Desconectado</span>
+            </div>
+            <div class="config-card-body">
+              <p class="text-sm text-muted">
+                Conecte seu projeto gratuito do Firebase para sincronizar automaticamente seus PROADs, agenda e informações em tempo real entre o PC do trabalho, PC de casa e celular.
+              </p>
+
+              <div class="form-grid" style="margin-top:16px;">
+                <div class="field">
+                  <label>API Key</label>
+                  <input type="text" id="fb-apiKey" placeholder="AIzaSy...">
+                </div>
+                <div class="field">
+                  <label>Project ID</label>
+                  <input type="text" id="fb-projectId" placeholder="ex: meugabinete-agenda">
+                </div>
+                <div class="field">
+                  <label>Auth Domain (Opcional)</label>
+                  <input type="text" id="fb-authDomain" placeholder="ex: meugabinete-agenda.firebaseapp.com">
+                </div>
+              </div>
+
+              <div class="card-actions-row" style="margin-top:16px;">
+                <button class="btn btn-primary" onclick="saveFirebaseConfig()">
+                  <i class="ti ti-check"></i> Salvar e Conectar Nuvem
+                </button>
+                <button class="btn btn-outline" onclick="disconnectFirebase()">
+                  <i class="ti ti-unlink"></i> Usar Somente Local
+                </button>
+              </div>
+
+              <div class="help-box" style="margin-top:16px;">
+                <i class="ti ti-info-circle text-primary"></i>
+                <div class="text-xs">
+                  <strong>Dica:</strong> Se você já usa um projeto Firebase (como o do <code>secexecpres-contatos</code>), pode usar as mesmas credenciais ou criar um banco isolado no console do Firebase em menos de 2 minutos.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD 2: SEGURANÇA E PIN -->
+          <div class="config-card">
+            <div class="config-card-header">
+              <div class="config-card-title">
+                <i class="ti ti-shield-lock text-emerald"></i>
+                <span>Proteção por Senha / PIN</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="enable-pin-toggle" onchange="togglePinSecurity(this.checked)">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="config-card-body">
+              <p class="text-sm text-muted">
+                Ative o bloqueio por PIN para proteger seus dados caso se ausente da mesa ou use um computador compartilhado.
+              </p>
+
+              <div class="form-grid" style="margin-top:16px;">
+                <div class="field">
+                  <label>PIN Atual / Novo PIN (4 dígitos numéricos)</label>
+                  <input type="password" id="cfg-new-pin" maxlength="4" placeholder="1234">
+                </div>
+              </div>
+
+              <div class="card-actions-row" style="margin-top:16px;">
+                <button class="btn btn-outline" onclick="updatePin()">
+                  <i class="ti ti-key"></i> Atualizar PIN
+                </button>
+                <button class="btn btn-subtle" onclick="lockSystem()">
+                  <i class="ti ti-lock"></i> Bloquear Agora
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD 3: BACKUP E RESTAURAÇÃO DE SEGURANÇA -->
+          <div class="config-card">
+            <div class="config-card-header">
+              <div class="config-card-title">
+                <i class="ti ti-file-export text-amber"></i>
+                <span>Backup e Restauração de Dados</span>
+              </div>
+            </div>
+            <div class="config-card-body">
+              <p class="text-sm text-muted">
+                Baixe um arquivo seguro com todos os seus PROADs, andamentos, agenda e informações para guardar consigo ou transferir para qualquer outro computador.
+              </p>
+
+              <div class="backup-actions-grid" style="margin-top:16px;">
+                <button class="btn btn-primary" onclick="exportDataJson()">
+                  <i class="ti ti-download"></i> Baixar Backup Completo (.JSON)
+                </button>
+                
+                <label class="btn btn-outline" style="cursor:pointer;">
+                  <i class="ti ti-upload"></i> Restaurar Backup (.JSON)
+                  <input type="file" id="import-json-file" accept=".json" onchange="importDataJson(event)" style="display:none;">
+                </label>
+              </div>
+
+              <div class="danger-zone" style="margin-top:24px;">
+                <span class="text-xs text-danger font-bold">Zona de Limpeza:</span>
+                <button class="btn btn-danger btn-xs" onclick="resetAllDataPrompt()">
+                  <i class="ti ti-trash"></i> Resetar e Apagar Todos os Dados
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 1: NOVO / EDITAR PROAD -->
+  <!-- ============================================================== -->
+  <div class="modal-overlay" id="modal-proad">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-proad-title">Novo Processo (PROAD)</h2>
+        <button class="btn-icon modal-close" onclick="closeModal('modal-proad')"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="proad-form-id">
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Número do PROAD *</label>
+            <input type="text" id="proad-form-numero" placeholder="ex: 2026123456" required>
+          </div>
+
+          <div class="form-row-2">
+            <div class="field">
+              <label>Fase Inicial *</label>
+              <select id="proad-form-fase">
+                <option value="recebimento">1. Recebimento</option>
+                <option value="elaboracao">2. Elaboração</option>
+                <option value="revisao">3. Revisão</option>
+                <option value="finalizacao">4. Finalizado</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Prioridade *</label>
+              <select id="proad-form-prioridade">
+                <option value="normal">Normal</option>
+                <option value="alta">Alta</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="field">
+              <label>Interessado / Unidade de Origem *</label>
+              <input type="text" id="proad-form-interessado" placeholder="ex: Presidência, DGP, Juiz Requerente...">
+            </div>
+            <div class="field">
+              <label>Prazo Limite / Conclusão</label>
+              <input type="date" id="proad-form-prazo">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Assunto / Resumo da Demanda *</label>
+            <textarea id="proad-form-assunto" rows="2" placeholder="Descreva brevemente o objeto do processo..."></textarea>
+          </div>
+
+          <div class="field">
+            <label>Primeiro Andamento / Registro Inicial</label>
+            <input type="text" id="proad-form-andamento-inicial" placeholder="ex: Processo recebido para elaboração de minuta de despacho">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modal-proad')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveProad()">
+          <i class="ti ti-check"></i> Salvar PROAD
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 2: HISTÓRICO DE ANDAMENTOS E DETALHES DO PROAD -->
+  <!-- ============================================================== -->
+  <div class="modal-overlay" id="modal-proad-detalhes">
+    <div class="modal-box modal-box-lg">
+      <div class="modal-header">
+        <div class="proad-modal-header-info">
+          <div class="proad-title-badge">
+            <span class="proad-num" id="det-proad-num">PROAD 2026...</span>
+            <button class="btn-copy-mini" id="det-copy-btn" title="Copiar número do PROAD" onclick="copyCurrentProadNumber()">
+              <i class="ti ti-copy"></i> Copiar
+            </button>
+          </div>
+          <span class="badge" id="det-proad-fase-badge">Recebimento</span>
+        </div>
+        <button class="btn-icon modal-close" onclick="closeModal('modal-proad-detalhes')"><i class="ti ti-x"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="proad-det-meta-grid">
+          <div class="det-meta-item">
+            <span class="det-meta-label">Interessado</span>
+            <span class="det-meta-val" id="det-proad-interessado">-</span>
+          </div>
+          <div class="det-meta-item">
+            <span class="det-meta-label">Prioridade</span>
+            <span class="det-meta-val" id="det-proad-prioridade">-</span>
+          </div>
+          <div class="det-meta-item">
+            <span class="det-meta-label">Data de Entrada</span>
+            <span class="det-meta-val" id="det-proad-data-entrada">-</span>
+          </div>
+          <div class="det-meta-item">
+            <span class="det-meta-label">Prazo</span>
+            <span class="det-meta-val" id="det-proad-prazo">-</span>
+          </div>
+        </div>
+
+        <div class="det-assunto-box">
+          <span class="det-meta-label">Assunto</span>
+          <p id="det-proad-assunto">-</p>
+        </div>
+
+        <!-- MUDANÇA RÁPIDA DE FASE -->
+        <div class="phase-stepper">
+          <span class="text-xs font-bold text-muted">Avançar / Alterar Fase:</span>
+          <div class="phase-buttons">
+            <button class="btn-phase" data-phase="recebimento" onclick="changeProadPhaseModal('recebimento')">1. Recebimento</button>
+            <button class="btn-phase" data-phase="elaboracao" onclick="changeProadPhaseModal('elaboracao')">2. Elaboração</button>
+            <button class="btn-phase" data-phase="revisao" onclick="changeProadPhaseModal('revisao')">3. Revisão</button>
+            <button class="btn-phase" data-phase="finalizacao" onclick="changeProadPhaseModal('finalizacao')">4. Finalizado</button>
+          </div>
+        </div>
+
+        <!-- LINHA DO TEMPO DE ANDAMENTOS -->
+        <div class="timeline-section">
+          <h4 class="timeline-heading">
+            <i class="ti ti-history"></i> Histórico de Andamentos & Ações
+          </h4>
+
+          <div class="new-andamento-box">
+            <input type="text" id="new-andamento-input" placeholder="Escreva o que foi feito (ex: Despacho elaborado e encaminhado)..." onkeydown="if(event.key==='Enter') addAndamentoToProad()">
+            <button class="btn btn-primary btn-sm" onclick="addAndamentoToProad()">
+              <i class="ti ti-send"></i> Registrar Andamento
+            </button>
+          </div>
+
+          <div class="andamentos-timeline" id="det-andamentos-timeline">
+            <!-- Renderizado via JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm" onclick="deleteProadPrompt()">
+          <i class="ti ti-trash"></i> Excluir Processo
+        </button>
+        <div class="modal-footer-right">
+          <button class="btn btn-outline" onclick="editProadFromDetails()">
+            <i class="ti ti-pencil"></i> Editar Dados
+          </button>
+          <button class="btn btn-primary" onclick="closeModal('modal-proad-detalhes')">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 3: NOVO / EDITAR EVENTO NA AGENDA -->
+  <!-- ============================================================== -->
+  <div class="modal-overlay" id="modal-event">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-event-title">Novo Compromisso / Prazo</h2>
+        <button class="btn-icon modal-close" onclick="closeModal('modal-event')"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="event-form-id">
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Título do Compromisso ou Prazo *</label>
+            <input type="text" id="event-form-title" placeholder="ex: Reunião com Diretor / Prazo de Defesa..." required>
+          </div>
+
+          <div class="form-row-2">
+            <div class="field">
+              <label>Data *</label>
+              <input type="date" id="event-form-date" required>
+            </div>
+            <div class="field">
+              <label>Categoria *</label>
+              <select id="event-form-cat">
+                <option value="prazo">Prazo PROAD</option>
+                <option value="reuniao">Reunião</option>
+                <option value="despacho">Despacho / Audiência</option>
+                <option value="tarefa">Tarefa do Dia</option>
+                <option value="lembrete">Lembrete</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="field">
+              <label>Horário Início</label>
+              <input type="time" id="event-form-start" value="09:00">
+            </div>
+            <div class="field">
+              <label>Horário Fim</label>
+              <input type="time" id="event-form-end" value="10:00">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Local ou Link (Teams / Sala / Ramal)</label>
+            <input type="text" id="event-form-location" placeholder="ex: Sala de Reuniões / Link Teams / Gabinete">
+          </div>
+
+          <div class="field">
+            <label>Observações / Pauta</label>
+            <textarea id="event-form-notes" rows="2" placeholder="Detalhes, tópicos a tratar ou número de processo relacionado..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modal-event')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEvent()">
+          <i class="ti ti-check"></i> Salvar Evento
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 4: NOVA / EDITAR INFORMAÇÃO / NOTA -->
+  <!-- ============================================================== -->
+  <div class="modal-overlay" id="modal-info">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-info-title">Nova Informação / Nota</h2>
+        <button class="btn-icon modal-close" onclick="closeModal('modal-info')"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="info-form-id">
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Título da Informação *</label>
+            <input type="text" id="info-form-title" placeholder="ex: Ramais da Presidência, Modelo de Despacho Padrão..." required>
+          </div>
+
+          <div class="form-row-2">
+            <div class="field">
+              <label>Categoria *</label>
+              <select id="info-form-cat">
+                <option value="ramais">Telefones & Ramais</option>
+                <option value="modelos">Modelos & Minutas</option>
+                <option value="procedimentos">Procedimentos & Rotinas</option>
+                <option value="links">Links & Sistemas</option>
+                <option value="acessos">Acessos & Senhas</option>
+                <option value="geral">Anotações Gerais</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tags (separadas por vírgula)</label>
+              <input type="text" id="info-form-tags" placeholder="ex: urgente, gabinete, dgp">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-header-row">
+              <label>Conteúdo Principal / Texto para Cópia *</label>
+              <span class="text-xs text-muted">Suporta texto corrido ou chave: valor</span>
+            </div>
+            <textarea id="info-form-content" rows="6" placeholder="Digite as informações ou texto da minuta. Cada linha com chave: valor (ex: Ramal DGP: 5020) ganha botão de cópia individual!" required></textarea>
+          </div>
+
+          <div class="field-checkbox">
+            <input type="checkbox" id="info-form-pinned">
+            <label for="info-form-pinned">📌 Fixar no painel "Hoje em Foco" para acesso prioritário</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modal-info')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveInfo()">
+          <i class="ti ti-check"></i> Salvar Informação
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL 5: BUSCA GLOBAL INSTANTÂNEA (SPOTLIGHT CTRL + K) -->
+  <!-- ============================================================== -->
+  <div class="search-modal-overlay" id="search-modal-overlay" onclick="if(event.target===this)closeGlobalSearch()">
+    <div class="search-palette">
+      <div class="search-palette-header">
+        <i class="ti ti-search"></i>
+        <input type="text" id="global-search-input" placeholder="Digite para buscar PROADs, contatos, modelos, eventos..." oninput="handleGlobalSearch(this.value)" autocomplete="off">
+        <button class="btn-icon" onclick="closeGlobalSearch()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="search-palette-results" id="global-search-results">
+        <div class="search-empty-state">
+          <i class="ti ti-keyboard"></i>
+          <span>Digite para pesquisar em todos os módulos</span>
+        </div>
+      </div>
+      <div class="search-palette-footer">
+        <span><kbd>ESC</kbd> para fechar</span>
+        <span><kbd>↑</kbd> <kbd>↓</kbd> para navegar</span>
+        <span><kbd>ENTER</kbd> para selecionar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT PRINCIPAL DA APLICAÇÃO -->
+  <script src="app.js"></script>
+</body>
+</html>
