@@ -618,9 +618,7 @@ function renderDashboard() {
               </span>
               <span class="badge ${getPriorityBadgeClass(proad.prioridade)}">${proad.prioridade.toUpperCase()}</span>
             </div>
-            <div class="pq-subject">${escapeHtml(proad.assunto)}</div>
             <div class="pq-bottom">
-              <span><i class="ti ti-user"></i> ${escapeHtml(proad.interessado)}</span>
               <span class="${isLate ? 'text-danger font-bold' : ''}">
                 <i class="ti ti-calendar"></i> Prazo: ${formatDateBR(proad.prazo)}
               </span>
@@ -658,8 +656,7 @@ function renderProads() {
   const filtered = state.proads.filter(p => {
     const matchSearch = !search ||
       p.numero.toLowerCase().includes(search.toLowerCase()) ||
-      p.interessado.toLowerCase().includes(search.toLowerCase()) ||
-      p.assunto.toLowerCase().includes(search.toLowerCase());
+      (p.andamentos && p.andamentos.some(a => a.texto.toLowerCase().includes(search.toLowerCase())));
 
     const matchPrio = prio === 'all' || p.prioridade === prio;
     const matchPhase = phase === 'all' || p.fase === phase;
@@ -692,7 +689,7 @@ function renderProads() {
   const tbody = document.getElementById('proad-table-body');
   if (tbody) {
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted);">Nenhum processo encontrado com os filtros atuais.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">Nenhum processo encontrado com os filtros atuais.</td></tr>`;
     } else {
       tbody.innerHTML = filtered.map(proad => `
         <tr>
@@ -700,12 +697,10 @@ function renderProads() {
             <strong>${escapeHtml(proad.numero)}</strong>
             <button class="btn-copy-mini" onclick="copyToClipboard('${proad.numero}', 'PROAD')"><i class="ti ti-copy"></i></button>
           </td>
-          <td>${escapeHtml(proad.interessado)}</td>
-          <td>${escapeHtml(proad.assunto)}</td>
           <td><span class="badge">${getPhaseName(proad.fase)}</span></td>
           <td><span class="badge ${getPriorityBadgeClass(proad.prioridade)}">${proad.prioridade}</span></td>
           <td>${formatDateBR(proad.prazo)}</td>
-          <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          <td style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
             ${proad.andamentos && proad.andamentos.length ? escapeHtml(proad.andamentos[proad.andamentos.length - 1].texto) : '-'}
           </td>
           <td>
@@ -739,8 +734,6 @@ function renderProadCardHtml(proad) {
         </span>
         <span class="badge ${getPriorityBadgeClass(proad.prioridade)}">${proad.prioridade.toUpperCase()}</span>
       </div>
-      <div class="pc-interessado"><i class="ti ti-user"></i> ${escapeHtml(proad.interessado)}</div>
-      <div class="pc-assunto">${escapeHtml(proad.assunto)}</div>
       <div class="pc-latest-andamento" title="${escapeHtml(latestAndamento)}">
         <i class="ti ti-corner-down-right"></i> ${escapeHtml(latestAndamento)}
       </div>
@@ -829,9 +822,7 @@ function openNewProadModal() {
   document.getElementById('proad-form-numero').value = '';
   document.getElementById('proad-form-fase').value = 'recebimento';
   document.getElementById('proad-form-prioridade').value = 'normal';
-  document.getElementById('proad-form-interessado').value = '';
   document.getElementById('proad-form-prazo').value = '';
-  document.getElementById('proad-form-assunto').value = '';
   document.getElementById('proad-form-andamento-inicial').value = '';
 
   openModal('modal-proad');
@@ -842,13 +833,11 @@ function saveProad() {
   const numero = document.getElementById('proad-form-numero').value.trim();
   const fase = document.getElementById('proad-form-fase').value;
   const prioridade = document.getElementById('proad-form-prioridade').value;
-  const interessado = document.getElementById('proad-form-interessado').value.trim();
   const prazo = document.getElementById('proad-form-prazo').value;
-  const assunto = document.getElementById('proad-form-assunto').value.trim();
   const andamentoInicial = document.getElementById('proad-form-andamento-inicial').value.trim();
 
-  if (!numero || !interessado || !assunto) {
-    alert('Por favor, preencha o número do PROAD, interessado e assunto.');
+  if (!numero) {
+    alert('Por favor, preencha o número do PROAD.');
     return;
   }
 
@@ -859,9 +848,7 @@ function saveProad() {
       proad.numero = numero;
       proad.fase = fase;
       proad.prioridade = prioridade;
-      proad.interessado = interessado;
       proad.prazo = prazo;
-      proad.assunto = assunto;
     }
   } else {
     proad = {
@@ -869,9 +856,7 @@ function saveProad() {
       numero,
       fase,
       prioridade,
-      interessado,
       prazo,
-      assunto,
       dataEntrada: getTodayString(),
       andamentos: []
     };
@@ -905,13 +890,13 @@ function saveProad() {
 function createProadDeadlineEvent(proad) {
   const ev = {
     id: generateId(),
-    titulo: `Prazo PROAD ${proad.numero}: ${proad.assunto}`,
+    titulo: `Prazo PROAD ${proad.numero}`,
     data: proad.prazo,
     categoria: 'prazo',
     horaInicio: '10:00',
     horaFim: '11:00',
     local: 'Gabinete / PROAD',
-    obs: `Interessado: ${proad.interessado}`,
+    obs: proad.andamentos && proad.andamentos.length ? proad.andamentos[0].texto : '',
     done: false,
     proadId: proad.id
   };
@@ -928,11 +913,9 @@ function openProadDetailsModal(proadId) {
 
   document.getElementById('det-proad-num').textContent = `PROAD ${proad.numero}`;
   document.getElementById('det-proad-fase-badge').textContent = getPhaseName(proad.fase);
-  document.getElementById('det-proad-interessado').textContent = proad.interessado;
   document.getElementById('det-proad-prioridade').textContent = proad.prioridade.toUpperCase();
   document.getElementById('det-proad-data-entrada').textContent = formatDateBR(proad.dataEntrada);
   document.getElementById('det-proad-prazo').textContent = formatDateBR(proad.prazo);
-  document.getElementById('det-proad-assunto').textContent = proad.assunto;
 
   // Atualiza botões do stepper de fase
   const phaseButtons = document.querySelectorAll('.btn-phase');
@@ -1030,9 +1013,7 @@ function editProadFromDetails() {
   document.getElementById('proad-form-numero').value = proad.numero;
   document.getElementById('proad-form-fase').value = proad.fase;
   document.getElementById('proad-form-prioridade').value = proad.prioridade;
-  document.getElementById('proad-form-interessado').value = proad.interessado;
   document.getElementById('proad-form-prazo').value = proad.prazo || '';
-  document.getElementById('proad-form-assunto').value = proad.assunto;
   document.getElementById('proad-form-andamento-inicial').value = '';
 
   openModal('modal-proad');

@@ -387,8 +387,6 @@
             <thead>
               <tr>
                 <th>Número PROAD</th>
-                <th>Interessado</th>
-                <th>Assunto</th>
                 <th>Fase Atual</th>
                 <th>Prioridade</th>
                 <th>Prazo</th>
@@ -705,20 +703,9 @@
             </div>
           </div>
 
-          <div class="form-row-2">
-            <div class="field">
-              <label>Interessado / Unidade de Origem *</label>
-              <input type="text" id="proad-form-interessado" placeholder="ex: Presidência, DGP, Juiz Requerente...">
-            </div>
-            <div class="field">
-              <label>Prazo Limite / Conclusão</label>
-              <input type="date" id="proad-form-prazo">
-            </div>
-          </div>
-
           <div class="field">
-            <label>Assunto / Resumo da Demanda *</label>
-            <textarea id="proad-form-assunto" rows="2" placeholder="Descreva brevemente o objeto do processo..."></textarea>
+            <label>Prazo Limite / Conclusão</label>
+            <input type="date" id="proad-form-prazo">
           </div>
 
           <div class="field">
@@ -755,11 +742,7 @@
       </div>
 
       <div class="modal-body">
-        <div class="proad-det-meta-grid">
-          <div class="det-meta-item">
-            <span class="det-meta-label">Interessado</span>
-            <span class="det-meta-val" id="det-proad-interessado">-</span>
-          </div>
+        <div class="proad-det-meta-grid" style="grid-template-columns: repeat(3, 1fr);">
           <div class="det-meta-item">
             <span class="det-meta-label">Prioridade</span>
             <span class="det-meta-val" id="det-proad-prioridade">-</span>
@@ -772,11 +755,6 @@
             <span class="det-meta-label">Prazo</span>
             <span class="det-meta-val" id="det-proad-prazo">-</span>
           </div>
-        </div>
-
-        <div class="det-assunto-box">
-          <span class="det-meta-label">Assunto</span>
-          <p id="det-proad-assunto">-</p>
         </div>
 
         <!-- MUDANÇA RÁPIDA DE FASE -->
@@ -973,6 +951,6 @@
   </div>
 
   <!-- SCRIPT PRINCIPAL DA APLICAÇÃO (COM CACHE BUSTER) -->
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
