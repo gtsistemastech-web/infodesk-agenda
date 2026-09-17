@@ -665,7 +665,7 @@ function renderProads() {
   });
 
   // Atualização dos contadores de colunas
-  const fases = ['recebimento', 'elaboracao', 'revisao', 'finalizacao'];
+  const fases = ['recebimento', 'elaboracao', 'revisao', 'aguardando_manifestacao', 'finalizacao'];
   fases.forEach(f => {
     const countEl = document.getElementById(`count-${f}`);
     const itemsInPhase = state.proads.filter(p => p.fase === f).length;
@@ -1800,7 +1800,8 @@ function getPhaseName(phase) {
     case 'recebimento': return '1. Recebimento';
     case 'elaboracao': return '2. Elaboração';
     case 'revisao': return '3. Revisão';
-    case 'finalizacao': return '4. Finalizado';
+    case 'aguardando_manifestacao': return '4. Aguardando Manifestação';
+    case 'finalizacao': return '5. Finalizado';
     default: return phase;
   }
 }

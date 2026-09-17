@@ -282,7 +282,7 @@
         <div class="page-header">
           <div>
             <h1 class="page-title">Processos Administrativos (PROADs)</h1>
-            <p class="page-subtitle">Acompanhamento e fluxo de trabalho por fases: Recebimento, Elaboração, Revisão e Finalização.</p>
+            <p class="page-subtitle">Acompanhamento e fluxo de trabalho por fases: Recebimento, Elaboração, Revisão, Aguardando Manifestação e Finalização.</p>
           </div>
           <div class="page-header-actions">
             <div class="view-switch">
@@ -324,7 +324,8 @@
                 <option value="recebimento">1. Recebimento</option>
                 <option value="elaboracao">2. Elaboração</option>
                 <option value="revisao">3. Revisão</option>
-                <option value="finalizacao">4. Finalização</option>
+                <option value="aguardando_manifestacao">4. Aguardando Manifestação</option>
+                <option value="finalizacao">5. Finalizado</option>
               </select>
             </div>
           </div>
@@ -368,11 +369,23 @@
             <div class="kanban-cards-container" id="cards-revisao"></div>
           </div>
 
-          <!-- Coluna 4: Finalização -->
+          <!-- Coluna 4: Aguardando Manifestação -->
+          <div class="kanban-column" id="col-aguardando_manifestacao">
+            <div class="col-header col-header-manifestacao">
+              <div class="col-title-group">
+                <span class="col-badge">4</span>
+                <h3>Aguardando Manifestação</h3>
+              </div>
+              <span class="col-counter" id="count-aguardando_manifestacao">0</span>
+            </div>
+            <div class="kanban-cards-container" id="cards-aguardando_manifestacao"></div>
+          </div>
+
+          <!-- Coluna 5: Finalização -->
           <div class="kanban-column" id="col-finalizacao">
             <div class="col-header col-header-finalizacao">
               <div class="col-title-group">
-                <span class="col-badge">4</span>
+                <span class="col-badge">5</span>
                 <h3>Finalizado</h3>
               </div>
               <span class="col-counter" id="count-finalizacao">0</span>
@@ -764,7 +777,8 @@
             <button class="btn-phase" data-phase="recebimento" onclick="changeProadPhaseModal('recebimento')">1. Recebimento</button>
             <button class="btn-phase" data-phase="elaboracao" onclick="changeProadPhaseModal('elaboracao')">2. Elaboração</button>
             <button class="btn-phase" data-phase="revisao" onclick="changeProadPhaseModal('revisao')">3. Revisão</button>
-            <button class="btn-phase" data-phase="finalizacao" onclick="changeProadPhaseModal('finalizacao')">4. Finalizado</button>
+            <button class="btn-phase" data-phase="aguardando_manifestacao" onclick="changeProadPhaseModal('aguardando_manifestacao')">4. Aguardando Manifestação</button>
+            <button class="btn-phase" data-phase="finalizacao" onclick="changeProadPhaseModal('finalizacao')">5. Finalizado</button>
           </div>
         </div>
 

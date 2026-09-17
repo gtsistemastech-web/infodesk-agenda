@@ -1118,6 +1118,7 @@ body {
 .col-header-recebimento { border-top: 3px solid #3B82F6; }
 .col-header-elaboracao { border-top: 3px solid #F59E0B; }
 .col-header-revisao { border-top: 3px solid #8B5CF6; }
+.col-header-manifestacao { border-top: 3px solid #EC4899; }
 .col-header-finalizacao { border-top: 3px solid #10B981; }
 
 .kanban-cards-container {
