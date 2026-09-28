@@ -726,7 +726,7 @@
               <select id="proad-form-prioridade">
                 <option value="normal">Normal</option>
                 <option value="alta">Alta</option>
-                <option value="urgente">Urgente</option>
+                <option value="urgente">🔥 Urgente</option>
               </select>
             </div>
           </div>
@@ -795,6 +795,22 @@
             <button class="btn-phase" data-phase="aguardando_manifestacao" onclick="changeProadPhaseModal('aguardando_manifestacao')">4. Aguardando Manifestação</button>
             <button class="btn-phase" data-phase="aguardando_diligencia" onclick="changeProadPhaseModal('aguardando_diligencia')">5. Aguardando Resposta de Diligência</button>
             <button class="btn-phase" data-phase="finalizacao" onclick="changeProadPhaseModal('finalizacao')">6. Finalizado</button>
+          </div>
+        </div>
+
+        <!-- MUDANÇA RÁPIDA DE PRIORIDADE -->
+        <div class="priority-stepper">
+          <span class="text-xs font-bold text-muted">Alterar Prioridade:</span>
+          <div class="priority-buttons">
+            <button type="button" class="btn-prio-toggle btn-prio-normal" data-prio="normal" onclick="changeProadPriorityModal('normal')">
+              <i class="ti ti-circle-check"></i> Normal
+            </button>
+            <button type="button" class="btn-prio-toggle btn-prio-alta" data-prio="alta" onclick="changeProadPriorityModal('alta')">
+              <i class="ti ti-arrow-up"></i> Alta
+            </button>
+            <button type="button" class="btn-prio-toggle btn-prio-urgente" data-prio="urgente" onclick="changeProadPriorityModal('urgente')">
+              <i class="ti ti-flame"></i> URGENTE
+            </button>
           </div>
         </div>
 
@@ -981,6 +997,6 @@
   </div>
 
   <!-- SCRIPT PRINCIPAL DA APLICAÇÃO (COM CACHE BUSTER) -->
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

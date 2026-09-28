@@ -1930,6 +1930,69 @@ body {
   border-color: var(--primary);
 }
 
+/* Stepper de Prioridade */
+.priority-stepper {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.priority-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.btn-prio-toggle {
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-prio-toggle:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-prio-normal.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.btn-prio-alta.active {
+  background: #F59E0B;
+  color: #fff;
+  border-color: #D97706;
+}
+
+.btn-prio-urgente {
+  font-weight: 700;
+}
+
+.btn-prio-urgente.active {
+  background: #EF4444;
+  color: #fff;
+  border-color: #DC2626;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  animation: badgeUrgentBlink 1.2s infinite ease-in-out;
+}
+
 /* Timeline de Andamentos */
 .timeline-section {
   display: flex;

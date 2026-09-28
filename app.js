@@ -923,7 +923,12 @@ function openProadDetailsModal(proadId) {
 
   document.getElementById('det-proad-num').textContent = `PROAD ${proad.numero}`;
   document.getElementById('det-proad-fase-badge').textContent = getPhaseName(proad.fase);
-  document.getElementById('det-proad-prioridade').textContent = proad.prioridade.toUpperCase();
+  
+  const prioEl = document.getElementById('det-proad-prioridade');
+  if (prioEl) {
+    prioEl.innerHTML = `<span class="badge ${getPriorityBadgeClass(proad.prioridade, proad.fase)}">${proad.prioridade.toUpperCase()}</span>`;
+  }
+
   document.getElementById('det-proad-data-entrada').textContent = formatDateBR(proad.dataEntrada);
   document.getElementById('det-proad-prazo').textContent = formatDateBR(proad.prazo);
 
@@ -931,6 +936,12 @@ function openProadDetailsModal(proadId) {
   const phaseButtons = document.querySelectorAll('.btn-phase');
   phaseButtons.forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-phase') === proad.fase);
+  });
+
+  // Atualiza botões do stepper de prioridade
+  const prioButtons = document.querySelectorAll('.btn-prio-toggle');
+  prioButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-prio') === proad.prioridade);
   });
 
   renderProadAndamentosTimeline(proad);
@@ -1133,7 +1144,44 @@ function changeProadPhaseModal(newPhase) {
     phaseButtons.forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-phase') === newPhase);
     });
+
+    const prioEl = document.getElementById('det-proad-prioridade');
+    if (prioEl) {
+      prioEl.innerHTML = `<span class="badge ${getPriorityBadgeClass(proad.prioridade, proad.fase)}">${proad.prioridade.toUpperCase()}</span>`;
+    }
+
     renderProadAndamentosTimeline(proad);
+  }
+}
+
+function changeProadPriorityModal(newPriority) {
+  if (!state.currentProadDetailId) return;
+  const proad = state.proads.find(p => p.id === state.currentProadDetailId);
+  if (!proad) return;
+
+  proad.prioridade = newPriority;
+
+  // Atualiza visual no modal
+  const prioEl = document.getElementById('det-proad-prioridade');
+  if (prioEl) {
+    prioEl.innerHTML = `<span class="badge ${getPriorityBadgeClass(proad.prioridade, proad.fase)}">${proad.prioridade.toUpperCase()}</span>`;
+  }
+
+  const prioButtons = document.querySelectorAll('.btn-prio-toggle');
+  prioButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-prio') === newPriority);
+  });
+
+  // Salva e sincroniza imediatamente
+  saveToLocal();
+  syncToCloud('proads', proad);
+  renderProads();
+  renderDashboard();
+
+  if (newPriority === 'urgente') {
+    showToast(`PROAD ${proad.numero} marcado como URGENTE!`);
+  } else {
+    showToast(`Prioridade alterada para ${newPriority.toUpperCase()}.`);
   }
 }
 
