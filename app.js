@@ -28,6 +28,7 @@ const state = {
   selectedDate: getTodayString(),
   activePage: 'hoje',
   currentProadDetailId: null,
+  editingAndamentoId: null,
   proadFilter: { search: '', prio: 'all', phase: 'all' },
   infoFilter: { search: '', cat: 'all', onlyPinned: false },
   cloudSync: {
@@ -665,7 +666,7 @@ function renderProads() {
   });
 
   // Atualização dos contadores de colunas
-  const fases = ['recebimento', 'elaboracao', 'revisao', 'aguardando_manifestacao', 'finalizacao'];
+  const fases = ['recebimento', 'elaboracao', 'revisao', 'aguardando_manifestacao', 'aguardando_diligencia', 'finalizacao'];
   fases.forEach(f => {
     const countEl = document.getElementById(`count-${f}`);
     const itemsInPhase = state.proads.filter(p => p.fase === f).length;
@@ -759,6 +760,13 @@ function getPhaseTransitionButtons(proad) {
     btns += `<button class="btn-move-phase" title="Mover para Revisão" onclick="quickChangeProadPhase('${proad.id}', 'revisao')">Revisão ➔</button>`;
   } else if (f === 'revisao') {
     btns += `<button class="btn-move-phase" title="Voltar para Elaboração" onclick="quickChangeProadPhase('${proad.id}', 'elaboracao')">⬅</button>`;
+    btns += `<button class="btn-move-phase" title="Mover para Manifestação" onclick="quickChangeProadPhase('${proad.id}', 'aguardando_manifestacao')">Manifestação ➔</button>`;
+  } else if (f === 'aguardando_manifestacao') {
+    btns += `<button class="btn-move-phase" title="Voltar para Revisão" onclick="quickChangeProadPhase('${proad.id}', 'revisao')">⬅</button>`;
+    btns += `<button class="btn-move-phase" title="Mover para Diligência" onclick="quickChangeProadPhase('${proad.id}', 'aguardando_diligencia')">Diligência ➔</button>`;
+    btns += `<button class="btn-move-phase" title="Finalizar Processo" onclick="quickChangeProadPhase('${proad.id}', 'finalizacao')">Finalizar ✓</button>`;
+  } else if (f === 'aguardando_diligencia') {
+    btns += `<button class="btn-move-phase" title="Voltar para Manifestação" onclick="quickChangeProadPhase('${proad.id}', 'aguardando_manifestacao')">⬅</button>`;
     btns += `<button class="btn-move-phase" title="Finalizar Processo" onclick="quickChangeProadPhase('${proad.id}', 'finalizacao')">Finalizar ✓</button>`;
   } else if (f === 'finalizacao') {
     btns += `<button class="btn-move-phase" title="Reabrir em Revisão" onclick="quickChangeProadPhase('${proad.id}', 'revisao')">Reabrir</button>`;
@@ -910,6 +918,7 @@ function openProadDetailsModal(proadId) {
   if (!proad) return;
 
   state.currentProadDetailId = proadId;
+  state.editingAndamentoId = null;
 
   document.getElementById('det-proad-num').textContent = `PROAD ${proad.numero}`;
   document.getElementById('det-proad-fase-badge').textContent = getPhaseName(proad.fase);
@@ -927,6 +936,19 @@ function openProadDetailsModal(proadId) {
   openModal('modal-proad-detalhes');
 }
 
+function toDateTimeLocalValue(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 function renderProadAndamentosTimeline(proad) {
   const timelineEl = document.getElementById('det-andamentos-timeline');
   if (!timelineEl) return;
@@ -934,15 +956,145 @@ function renderProadAndamentosTimeline(proad) {
   const andamentos = proad.andamentos || [];
   if (andamentos.length === 0) {
     timelineEl.innerHTML = `<div style="text-align:center;padding:14px;color:var(--text-subtle);font-size:12px;">Nenhum andamento registrado ainda.</div>`;
-  } else {
-    // Ordem cronológica invertida (mais recentes primeiro)
-    const reversed = [...andamentos].reverse();
-    timelineEl.innerHTML = reversed.map(a => `
-      <div class="andamento-entry">
+    return;
+  }
+
+  // Garante ID único em cada andamento
+  andamentos.forEach((a, idx) => {
+    if (!a.id) a.id = `and-${Date.now()}-${idx}`;
+  });
+
+  // Ordem cronológica invertida (mais recentes primeiro)
+  const reversed = [...andamentos].sort((a, b) => new Date(b.data) - new Date(a.data));
+
+  timelineEl.innerHTML = reversed.map(a => {
+    const isEditing = state.editingAndamentoId === a.id;
+    if (isEditing) {
+      return `
+        <div class="andamento-entry andamento-entry-editing" id="andamento-entry-${a.id}">
+          <div class="andamento-edit-wrapper">
+            <div class="andamento-edit-fields">
+              <div class="andamento-edit-date-col">
+                <label class="andamento-field-label">Data e Hora</label>
+                <input type="datetime-local" id="edit-andamento-date-${a.id}" class="andamento-date-input" value="${toDateTimeLocalValue(a.data)}">
+              </div>
+              <div class="andamento-edit-text-col">
+                <label class="andamento-field-label">Descrição do Andamento</label>
+                <input type="text" id="edit-andamento-text-${a.id}" class="andamento-text-input" value="${escapeHtml(a.texto)}" placeholder="Descreva o andamento..." onkeydown="handleEditAndamentoKeyDown(event, '${proad.id}', '${a.id}')">
+              </div>
+            </div>
+            <div class="andamento-edit-actions">
+              <button type="button" class="btn btn-sm btn-primary" onclick="saveEditedAndamento('${proad.id}', '${a.id}')" title="Salvar alteração">
+                <i class="ti ti-check"></i> Salvar
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="cancelEditAndamento('${proad.id}')" title="Cancelar edição">
+                <i class="ti ti-x"></i> Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="andamento-entry" id="andamento-entry-${a.id}">
         <span class="andamento-time">${formatDateTimeBR(a.data)}</span>
-        <span class="andamento-text">${escapeHtml(a.texto)}</span>
+        <span class="andamento-text" title="Clique duas vezes para editar" ondblclick="startEditAndamento('${proad.id}', '${a.id}')">${escapeHtml(a.texto)}</span>
+        <div class="andamento-entry-actions">
+          <button type="button" class="btn-andamento-tool" onclick="startEditAndamento('${proad.id}', '${a.id}')" title="Editar andamento">
+            <i class="ti ti-pencil"></i>
+          </button>
+          <button type="button" class="btn-andamento-tool btn-andamento-tool-danger" onclick="deleteAndamento('${proad.id}', '${a.id}')" title="Excluir andamento">
+            <i class="ti ti-trash"></i>
+          </button>
+        </div>
       </div>
-    `).join('');
+    `;
+  }).join('');
+}
+
+function startEditAndamento(proadId, andamentoId) {
+  state.editingAndamentoId = andamentoId;
+  const proad = state.proads.find(p => p.id === proadId);
+  if (proad) {
+    renderProadAndamentosTimeline(proad);
+    setTimeout(() => {
+      const input = document.getElementById(`edit-andamento-text-${andamentoId}`);
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 50);
+  }
+}
+
+function cancelEditAndamento(proadId) {
+  state.editingAndamentoId = null;
+  const proad = state.proads.find(p => p.id === proadId);
+  if (proad) {
+    renderProadAndamentosTimeline(proad);
+  }
+}
+
+function saveEditedAndamento(proadId, andamentoId) {
+  const proad = state.proads.find(p => p.id === proadId);
+  if (!proad) return;
+
+  const andamento = (proad.andamentos || []).find(a => a.id === andamentoId);
+  if (!andamento) return;
+
+  const textInput = document.getElementById(`edit-andamento-text-${andamentoId}`);
+  const dateInput = document.getElementById(`edit-andamento-date-${andamentoId}`);
+
+  const novoTexto = textInput ? textInput.value.trim() : '';
+  if (!novoTexto) {
+    alert('Por favor, informe a descrição do andamento.');
+    return;
+  }
+
+  andamento.texto = novoTexto;
+
+  if (dateInput && dateInput.value) {
+    const parsedDate = new Date(dateInput.value);
+    if (!isNaN(parsedDate.getTime())) {
+      andamento.data = parsedDate.toISOString();
+    }
+  }
+
+  state.editingAndamentoId = null;
+
+  saveToLocal();
+  syncToCloud('proads', proad);
+  renderProadAndamentosTimeline(proad);
+  renderProads();
+  showToast('Andamento atualizado com sucesso!');
+}
+
+function deleteAndamento(proadId, andamentoId) {
+  const proad = state.proads.find(p => p.id === proadId);
+  if (!proad) return;
+
+  const andamento = (proad.andamentos || []).find(a => a.id === andamentoId);
+  const snippet = andamento ? `"${andamento.texto.substring(0, 30)}..."` : 'este andamento';
+
+  if (confirm(`Tem certeza que deseja excluir ${snippet}?`)) {
+    proad.andamentos = (proad.andamentos || []).filter(a => a.id !== andamentoId);
+    state.editingAndamentoId = null;
+    saveToLocal();
+    syncToCloud('proads', proad);
+    renderProadAndamentosTimeline(proad);
+    renderProads();
+    showToast('Andamento excluído.');
+  }
+}
+
+function handleEditAndamentoKeyDown(event, proadId, andamentoId) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    saveEditedAndamento(proadId, andamentoId);
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    cancelEditAndamento(proadId);
   }
 }
 
@@ -963,6 +1115,7 @@ function addAndamentoToProad() {
   });
 
   input.value = '';
+  saveToLocal();
   syncToCloud('proads', proad);
   renderProadAndamentosTimeline(proad);
   renderProads();
@@ -1801,7 +1954,8 @@ function getPhaseName(phase) {
     case 'elaboracao': return '2. Elaboração';
     case 'revisao': return '3. Revisão';
     case 'aguardando_manifestacao': return '4. Aguardando Manifestação';
-    case 'finalizacao': return '5. Finalizado';
+    case 'aguardando_diligencia': return '5. Aguardando Resposta de Diligência';
+    case 'finalizacao': return '6. Finalizado';
     default: return phase;
   }
 }

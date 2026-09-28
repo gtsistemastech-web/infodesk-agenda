@@ -282,7 +282,7 @@
         <div class="page-header">
           <div>
             <h1 class="page-title">Processos Administrativos (PROADs)</h1>
-            <p class="page-subtitle">Acompanhamento e fluxo de trabalho por fases: Recebimento, Elaboração, Revisão, Aguardando Manifestação e Finalização.</p>
+            <p class="page-subtitle">Acompanhamento e fluxo de trabalho por fases: Recebimento, Elaboração, Revisão, Aguardando Manifestação, Aguardando Resposta de Diligência e Finalização.</p>
           </div>
           <div class="page-header-actions">
             <div class="view-switch">
@@ -325,7 +325,8 @@
                 <option value="elaboracao">2. Elaboração</option>
                 <option value="revisao">3. Revisão</option>
                 <option value="aguardando_manifestacao">4. Aguardando Manifestação</option>
-                <option value="finalizacao">5. Finalizado</option>
+                <option value="aguardando_diligencia">5. Aguardando Resposta de Diligência</option>
+                <option value="finalizacao">6. Finalizado</option>
               </select>
             </div>
           </div>
@@ -381,11 +382,23 @@
             <div class="kanban-cards-container" id="cards-aguardando_manifestacao"></div>
           </div>
 
-          <!-- Coluna 5: Finalização -->
+          <!-- Coluna 5: Aguardando Resposta de Diligência -->
+          <div class="kanban-column" id="col-aguardando_diligencia">
+            <div class="col-header col-header-diligencia">
+              <div class="col-title-group">
+                <span class="col-badge">5</span>
+                <h3>Aguardando Resposta de Diligência</h3>
+              </div>
+              <span class="col-counter" id="count-aguardando_diligencia">0</span>
+            </div>
+            <div class="kanban-cards-container" id="cards-aguardando_diligencia"></div>
+          </div>
+
+          <!-- Coluna 6: Finalização -->
           <div class="kanban-column" id="col-finalizacao">
             <div class="col-header col-header-finalizacao">
               <div class="col-title-group">
-                <span class="col-badge">5</span>
+                <span class="col-badge">6</span>
                 <h3>Finalizado</h3>
               </div>
               <span class="col-counter" id="count-finalizacao">0</span>
@@ -703,7 +716,9 @@
                 <option value="recebimento">1. Recebimento</option>
                 <option value="elaboracao">2. Elaboração</option>
                 <option value="revisao">3. Revisão</option>
-                <option value="finalizacao">4. Finalizado</option>
+                <option value="aguardando_manifestacao">4. Aguardando Manifestação</option>
+                <option value="aguardando_diligencia">5. Aguardando Resposta de Diligência</option>
+                <option value="finalizacao">6. Finalizado</option>
               </select>
             </div>
             <div class="field">
@@ -778,7 +793,8 @@
             <button class="btn-phase" data-phase="elaboracao" onclick="changeProadPhaseModal('elaboracao')">2. Elaboração</button>
             <button class="btn-phase" data-phase="revisao" onclick="changeProadPhaseModal('revisao')">3. Revisão</button>
             <button class="btn-phase" data-phase="aguardando_manifestacao" onclick="changeProadPhaseModal('aguardando_manifestacao')">4. Aguardando Manifestação</button>
-            <button class="btn-phase" data-phase="finalizacao" onclick="changeProadPhaseModal('finalizacao')">5. Finalizado</button>
+            <button class="btn-phase" data-phase="aguardando_diligencia" onclick="changeProadPhaseModal('aguardando_diligencia')">5. Aguardando Resposta de Diligência</button>
+            <button class="btn-phase" data-phase="finalizacao" onclick="changeProadPhaseModal('finalizacao')">6. Finalizado</button>
           </div>
         </div>
 
@@ -965,6 +981,6 @@
   </div>
 
   <!-- SCRIPT PRINCIPAL DA APLICAÇÃO (COM CACHE BUSTER) -->
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

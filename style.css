@@ -1056,7 +1056,7 @@ body {
 /* Quadro Kanban */
 .kanban-board {
   display: grid;
-  grid-template-columns: repeat(4, minmax(260px, 1fr));
+  grid-template-columns: repeat(6, minmax(260px, 1fr));
   gap: 16px;
   flex: 1;
   overflow-x: auto;
@@ -1119,6 +1119,7 @@ body {
 .col-header-elaboracao { border-top: 3px solid #F59E0B; }
 .col-header-revisao { border-top: 3px solid #8B5CF6; }
 .col-header-manifestacao { border-top: 3px solid #EC4899; }
+.col-header-diligencia { border-top: 3px solid #06B6D4; }
 .col-header-finalizacao { border-top: 3px solid #10B981; }
 
 .kanban-cards-container {
@@ -1861,7 +1862,7 @@ body {
 
 .phase-buttons {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
@@ -1931,13 +1932,24 @@ body {
 
 .andamento-entry {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   background: var(--surface-alt);
   border-radius: var(--radius-md);
   border-left: 3px solid var(--primary);
+  border-top: 1px solid transparent;
+  border-right: 1px solid transparent;
+  border-bottom: 1px solid transparent;
   font-size: 12.5px;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.andamento-entry:hover {
+  background: var(--surface);
+  border-color: var(--border);
+  border-left-color: var(--primary);
 }
 
 .andamento-time {
@@ -1950,6 +1962,130 @@ body {
 .andamento-text {
   flex: 1;
   color: var(--text-main);
+  word-break: break-word;
+  line-height: 1.45;
+  cursor: text;
+}
+
+.andamento-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.andamento-entry:hover .andamento-entry-actions {
+  opacity: 1;
+}
+
+.btn-andamento-tool {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13.5px;
+  transition: all 0.15s ease;
+}
+
+.btn-andamento-tool:hover {
+  background: var(--primary-light, #EFF6FF);
+  border-color: var(--primary-light, #EFF6FF);
+  color: var(--primary);
+}
+
+.btn-andamento-tool-danger:hover {
+  background: #FEE2E2;
+  border-color: #FEE2E2;
+  color: #EF4444;
+}
+
+/* Modo de Edição Inline do Andamento */
+.andamento-entry-editing {
+  background: var(--surface);
+  border: 1.5px solid var(--primary);
+  border-left: 4px solid var(--primary);
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.andamento-edit-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.andamento-edit-fields {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.andamento-edit-date-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 195px;
+  flex-shrink: 0;
+}
+
+.andamento-edit-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.andamento-field-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  letter-spacing: 0.3px;
+}
+
+.andamento-date-input,
+.andamento-text-input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  background: var(--surface);
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.andamento-date-input:focus,
+.andamento-text-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.andamento-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .andamento-edit-fields {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .andamento-edit-date-col {
+    width: 100%;
+  }
 }
 
 /* --- BUSCA GLOBAL / SPOTLIGHT (CTRL + K) --- */
@@ -2212,7 +2348,7 @@ body {
   }
 
   .kanban-board {
-    grid-template-columns: repeat(4, 280px);
+    grid-template-columns: repeat(6, 280px);
   }
 }
 
