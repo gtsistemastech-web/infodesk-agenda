@@ -578,6 +578,31 @@ body {
   border: 1px solid var(--red-border);
 }
 
+.badge-urgent-static {
+  opacity: 0.85;
+}
+
+.badge-urgent-blinking {
+  animation: badgeUrgentBlink 1.2s infinite ease-in-out;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+@keyframes badgeUrgentBlink {
+  0%, 100% {
+    background-color: #EF4444;
+    color: #FFFFFF;
+    border-color: #DC2626;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    background-color: #FEE2E2;
+    color: #DC2626;
+    border-color: #FCA5A5;
+    box-shadow: 0 0 2px rgba(239, 68, 68, 0.2);
+  }
+}
+
 .badge-alta {
   background: var(--amber-light);
   color: var(--amber);
@@ -1150,6 +1175,22 @@ body {
   border-color: var(--primary);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+.proad-card.card-urgent-pulse {
+  border-left: 4px solid #EF4444 !important;
+  animation: cardUrgentPulse 1.6s infinite ease-in-out;
+}
+
+@keyframes cardUrgentPulse {
+  0%, 100% {
+    border-color: #FCA5A5;
+    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    border-color: #EF4444;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+  }
 }
 
 .pc-top {

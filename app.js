@@ -617,7 +617,7 @@ function renderDashboard() {
                   <i class="ti ti-copy"></i>
                 </button>
               </span>
-              <span class="badge ${getPriorityBadgeClass(proad.prioridade)}">${proad.prioridade.toUpperCase()}</span>
+              <span class="badge ${getPriorityBadgeClass(proad.prioridade, proad.fase)}">${proad.prioridade.toUpperCase()}</span>
             </div>
             <div class="pq-bottom">
               <span class="${isLate ? 'text-danger font-bold' : ''}">
@@ -699,7 +699,7 @@ function renderProads() {
             <button class="btn-copy-mini" onclick="copyToClipboard('${proad.numero}', 'PROAD')"><i class="ti ti-copy"></i></button>
           </td>
           <td><span class="badge">${getPhaseName(proad.fase)}</span></td>
-          <td><span class="badge ${getPriorityBadgeClass(proad.prioridade)}">${proad.prioridade}</span></td>
+          <td><span class="badge ${getPriorityBadgeClass(proad.prioridade, proad.fase)}">${proad.prioridade}</span></td>
           <td>${formatDateBR(proad.prazo)}</td>
           <td style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
             ${proad.andamentos && proad.andamentos.length ? escapeHtml(proad.andamentos[proad.andamentos.length - 1].texto) : '-'}
@@ -720,12 +720,13 @@ function renderProads() {
 function renderProadCardHtml(proad) {
   const today = getTodayString();
   const isLate = proad.prazo && proad.prazo < today;
+  const isUrgentActive = proad.prioridade === 'urgente' && proad.fase !== 'finalizacao';
   const latestAndamento = proad.andamentos && proad.andamentos.length
     ? proad.andamentos[proad.andamentos.length - 1].texto
     : 'Sem andamentos registrados';
 
   return `
-    <div class="proad-card" onclick="openProadDetailsModal('${proad.id}')">
+    <div class="proad-card ${isUrgentActive ? 'card-urgent-pulse' : ''}" onclick="openProadDetailsModal('${proad.id}')">
       <div class="pc-top">
         <span class="pc-num">
           ${escapeHtml(proad.numero)}
@@ -733,7 +734,7 @@ function renderProadCardHtml(proad) {
             <i class="ti ti-copy"></i>
           </button>
         </span>
-        <span class="badge ${getPriorityBadgeClass(proad.prioridade)}">${proad.prioridade.toUpperCase()}</span>
+        <span class="badge ${getPriorityBadgeClass(proad.prioridade, proad.fase)}">${proad.prioridade.toUpperCase()}</span>
       </div>
       <div class="pc-latest-andamento" title="${escapeHtml(latestAndamento)}">
         <i class="ti ti-corner-down-right"></i> ${escapeHtml(latestAndamento)}
@@ -1960,9 +1961,11 @@ function getPhaseName(phase) {
   }
 }
 
-function getPriorityBadgeClass(prio) {
+function getPriorityBadgeClass(prio, fase) {
+  if (prio === 'urgente') {
+    return fase !== 'finalizacao' ? 'badge-urgent badge-urgent-blinking' : 'badge-urgent badge-urgent-static';
+  }
   switch (prio) {
-    case 'urgente': return 'badge-urgent';
     case 'alta': return 'badge-alta';
     default: return 'badge-normal';
   }
